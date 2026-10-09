@@ -103,10 +103,29 @@ jobs:
           exit-code: '1'
 
       - uses: aws-actions/configure-aws-credentials@v4
+        id: aws
         if: env.PUBLISH == 'true'
         with:
           role-to-assume: ${{ secrets.ECR_PUBLIC_ROLE_ARN }}
           aws-region: us-east-1
+
+      # Only when the AWS sign-in fails: print the identity GitHub presented (never the
+      # token itself), so the role's trust policy can be matched to it exactly.
+      - name: Explain AWS sign-in failure
+        if: failure() && steps.aws.outcome == 'failure'
+        run: |
+          token=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          node -e '
+            const c = JSON.parse(Buffer.from(process.argv[1].split(".")[1], "base64url").toString())
+            console.log("GitHub presented this identity to AWS:")
+            for (const k of ["aud", "sub", "repository", "repository_owner", "ref", "environment", "job_workflow_ref"])
+              if (c[k] !== undefined) console.log(`  ${k.padEnd(18)} ${c[k]}`)
+            console.log("\nThe role trust policy must match it exactly (case-sensitive):")
+            console.log(`  "token.actions.githubusercontent.com:aud": "${c.aud}"`)
+            console.log(`  "token.actions.githubusercontent.com:sub": "${c.sub}"`)
+          ' "$token"
+
       - uses: aws-actions/amazon-ecr-login@v2
         if: env.PUBLISH == 'true'
         with:
