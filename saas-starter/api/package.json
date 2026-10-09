@@ -1,0 +1,30 @@
+{
+  "name": "saas-starter-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db": "pglite-server --db=memory:// --port=5432 --max-connections=10"
+  },
+  "dependencies": {
+    "@better-auth/sso": "^1.7.7",
+    "@hono/node-server": "^2.1.4",
+    "better-auth": "^1.7.7",
+    "hono": "^4.13.13",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "^0.2.11",
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
