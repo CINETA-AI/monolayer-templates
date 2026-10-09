@@ -1,0 +1,40 @@
+# Local development with Docker: Postgres + the API + the web app on http://localhost:3000.
+# (No Docker? `npm run db` in ./api starts an in-memory Postgres instead — see the README.)
+#
+# RUNTIME=node:22-bookworm-slim lets this build before the monolayer/* base images are
+# published; CI builds the real images on monolayer/node:22.
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports: ['5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      retries: 30
+
+  api:
+    build:
+      context: ./api
+      args: { RUNTIME: node:22-bookworm-slim }
+    working_dir: /app
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgres://postgres:postgres@db:5432/app
+      TENANCY_MODE: ${TENANCY_MODE:-rls}
+      SEED_MODE: ${SEED_MODE:-none}
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./web
+      args: { RUNTIME: node:22-bookworm-slim }
+    working_dir: /app
+    environment:
+      API_URL: http://api:8080
+    ports: ['3000:3000']
+    depends_on: [api]

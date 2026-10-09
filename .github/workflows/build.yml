@@ -1,0 +1,124 @@
+# Test every template, then build the image family in order — base → runtime → apps —
+# scan each image, and publish to ECR Public. Runs weekly too, so OS patches in the
+# base flow into every template image without anyone touching the code.
+#
+# Publishing needs (repo settings):
+#   secrets.ECR_PUBLIC_ROLE_ARN  IAM role trusted for this repo via GitHub OIDC, allowed
+#                                ecr-public:* on the repositories below + sts:GetServiceBearerToken
+#   vars.ECR_PUBLIC_REGISTRY     optional, defaults to public.ecr.aws/monolayer
+
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC: pick up OS and runtime patches
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [saas-starter/api, saas-starter/web]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+        if: matrix.app == 'saas-starter/api'
+      - run: npm run build
+
+  images:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      REGISTRY: ${{ vars.ECR_PUBLIC_REGISTRY || 'public.ecr.aws/monolayer' }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build base and runtime images
+        run: |
+          docker build --pull -t "$REGISTRY/base:debian12-slim" images/base
+          # no --pull: it must build on the base just built, not the published one
+          docker build -t "$REGISTRY/node:22" \
+            --build-arg BASE="$REGISTRY/base:debian12-slim" images/node22
+
+      - name: Build template images
+        run: |
+          for app in api web; do
+            version=$(node -p "require('./saas-starter/$app/package.json').version")
+            docker build -t "$REGISTRY/saas-starter-$app:$version" \
+              --build-arg RUNTIME="$REGISTRY/node:22" "saas-starter/$app"
+            echo "SAAS_STARTER_${app^^}=$REGISTRY/saas-starter-$app:$version" >> "$GITHUB_ENV"
+          done
+
+      - name: Smoke-test the images
+        run: |
+          docker run --rm "$REGISTRY/node:22"
+          for image in "$SAAS_STARTER_API" "$SAAS_STARTER_WEB"; do
+            # no shell in the runtime images
+            if docker run --rm --entrypoint /bin/sh "$image" -c true 2>/dev/null; then
+              echo "::error::$image has a shell"; exit 1
+            fi
+            # runs as the unprivileged app user
+            test "$(docker inspect -f '{{.Config.User}}' "$image")" = "10001:10001"
+          done
+
+      - name: Scan (fail on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.SAAS_STARTER_API }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.SAAS_STARTER_WEB }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: env.PUBLISH == 'true'
+        with:
+          role-to-assume: ${{ secrets.ECR_PUBLIC_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+        if: env.PUBLISH == 'true'
+        with:
+          registry-type: public
+
+      - name: Push
+        if: env.PUBLISH == 'true'
+        run: |
+          stamp=$(date -u +%Y%m%d)
+          for image in "$REGISTRY/base:debian12-slim" "$REGISTRY/node:22" "$SAAS_STARTER_API" "$SAAS_STARTER_WEB"; do
+            docker push "$image"
+            # an immutable, dated tag next to the moving one, for pinning and rollback
+            docker tag "$image" "$image-$stamp"
+            docker push "$image-$stamp"
+          done
