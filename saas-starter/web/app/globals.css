@@ -1,0 +1,313 @@
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --text: #17171c;
+  --muted: #6b6b76;
+  --border: #e4e4e9;
+  --accent: #4f46e5;
+  --accent-text: #ffffff;
+  --danger: #c0262d;
+  --ok: #15803d;
+  --warn: #b45309;
+  --notice: #eef2ff;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --text: #ececf1;
+    --muted: #9a9aa6;
+    --border: #2a2a33;
+    --accent: #818cf8;
+    --accent-text: #0f0f13;
+    --danger: #f87171;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --notice: #1e1b3a;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+code {
+  font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  word-break: break-all;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+input[type='checkbox'] {
+  width: auto;
+}
+
+button {
+  font: inherit;
+  font-weight: 500;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button.link {
+  background: none;
+  color: var(--accent);
+  padding: 0;
+}
+
+button.danger,
+.error {
+  color: var(--danger);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 500;
+}
+
+label.row {
+  display: flex;
+  font-weight: 400;
+}
+
+.stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.narrow {
+  max-width: 360px;
+}
+
+.row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.card.auth {
+  width: 100%;
+  max-width: 400px;
+}
+
+.divider {
+  text-align: center;
+  color: var(--muted);
+  margin: 1rem 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar nav {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.topbar nav a,
+.brand {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.topbar nav a.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.who {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  color: var(--muted);
+}
+
+.content {
+  max-width: 820px;
+  margin: 1.5rem auto;
+  padding: 0 16px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.badge.ok {
+  color: var(--ok);
+}
+
+.badge.warn,
+.badge.env {
+  color: var(--warn);
+}
+
+.notice {
+  background: var(--notice);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.notice p {
+  margin: 0.4rem 0 0;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list li.provider {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.note header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.note p {
+  white-space: pre-wrap;
+}
+
+.codes {
+  columns: 2;
+}
+
+.tabs {
+  margin-bottom: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .codes {
+    columns: 1;
+  }
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
