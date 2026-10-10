@@ -13,7 +13,7 @@ services, and a public HTTPS gateway. There is nothing to configure by hand.
 
 The template **manifests** live in the Monolayer app repo
 (`backend/internal/svc/core/templates/*.json`). A manifest says which images to run, how the
-services connect, and what each environment (production / staging / preview) gets. This repo
+services connect, and the questions asked when the template is added to a project. This repo
 holds the code and images those manifests point at.
 
 ## One base image, reused everywhere

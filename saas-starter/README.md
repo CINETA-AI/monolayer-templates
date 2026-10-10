@@ -8,8 +8,9 @@ browser ──HTTPS──▶ gateway (CloudFront) ──VPC origin──▶ inte
 ```
 
 Only the gateway is public. The ALB, both services and the database sit in the project's private
-network. Each environment (production, staging, preview) is its own project with its own
-database, credentials and secrets.
+network. Adding the template to a project puts these four nodes on its canvas as one group named
+"SaaS starter"; they use that project's network and compliance settings, and removing the group
+tears all four down.
 
 ## What's built in
 
@@ -24,7 +25,7 @@ database, credentials and secrets.
 | Tenant isolation | Postgres row-level security, enabled and FORCED, with tenant work run as a role without BYPASSRLS ([db.ts](api/src/db.ts)). Optionally a schema per tenant on top. |
 | Only the gateway is public | Both services are deployed with `public: false` |
 | Encrypted DB, backups, point-in-time recovery | The template's RDS node: encrypted storage, daily backups with PITR, TLS verified against the RDS CA |
-| Synthetic seed in preview | `SEED_MODE=synthetic` gives every new preview user a "Demo Co" tenant of fake data. Refused in production. |
+| Synthetic seed (optional) | Set `SEED_MODE=synthetic` (with `APP_ENV` other than `production`) and every new user gets a "Demo Co" tenant of fake data. Refused in production. |
 | Audit log | Per tenant, under RLS like everything else (`/audit`, admins) |
 
 ## Configuration
@@ -36,7 +37,7 @@ The platform injects all of these, so there is nothing to set by hand:
 | `DATABASE_URL` | api | the api → db canvas connection |
 | `PUBLIC_URL` | api | the gateway's `https://…cloudfront.net` URL |
 | `SESSION_SECRET`, `CSRF_SECRET` | api | generated in the customer's account (SSM, create-once) |
-| `APP_ENV`, `TENANCY_MODE`, `SEED_MODE` | api | the template manifest (`APP_ENV` also goes to web) |
+| `APP_ENV`, `TENANCY_MODE` | api | the template manifest (`APP_ENV` also goes to web) |
 | `API_URL`, `API_PRIVATE_URL` | web | the web → api connection (used only by the local-dev `/api` proxy) |
 
 Optional: `MFA_REQUIRED=false` turns off the MFA requirement. `PGSSLMODE` / `PGSSLROOTCERT`
