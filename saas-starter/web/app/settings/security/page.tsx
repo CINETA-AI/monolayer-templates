@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react'
 
 import { AppShell, useMe } from '@/components/app-shell'
 import { authClient } from '@/lib/auth-client'
+import { go, nextParam } from '@/lib/paths'
 
 function Security() {
   const router = useRouter()
@@ -34,7 +35,7 @@ function Security() {
     const { error } = await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, '') })
     if (error) return setError(error.message ?? 'That code did not work')
     await refresh()
-    router.replace('/dashboard')
+    go(router, nextParam())
   }
 
   if (me.mfaEnabled) {

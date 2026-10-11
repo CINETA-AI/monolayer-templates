@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { AppShell, useMe } from '@/components/app-shell'
 import { authClient } from '@/lib/auth-client'
+import { go, nextParam } from '@/lib/paths'
 
 type Org = { id: string; name: string }
 type Invitation = { id: string; organizationId: string; role: string; status: string }
@@ -28,7 +29,7 @@ function Onboarding() {
     const { error } = await authClient.organization.setActive({ organizationId })
     if (error) return setError(error.message ?? 'Could not open that organization')
     await refresh()
-    router.replace('/dashboard')
+    go(router, nextParam())
   }
 
   async function accept(invitationId: string, organizationId: string) {

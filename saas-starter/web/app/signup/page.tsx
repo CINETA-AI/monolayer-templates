@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import { AuthCard } from '@/components/app-shell'
-import { resetCsrf, safeNext } from '@/lib/api'
+import { resetCsrf } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
+import { go, nextParam } from '@/lib/paths'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -24,7 +25,7 @@ export default function SignupPage() {
     setBusy(false)
     if (error) return setError(error.message ?? 'Sign-up failed')
     resetCsrf()
-    router.replace(safeNext(new URLSearchParams(window.location.search).get('next')))
+    go(router, nextParam())
   }
 
   return (

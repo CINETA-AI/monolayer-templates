@@ -1,4 +1,4 @@
-# Local development with Docker: Postgres + the API + the web app on http://localhost:3000.
+# Local development with Docker: Postgres + the API + the web app on http://localhost:3000/account.
 # (No Docker? `npm run db` in ./api starts an in-memory Postgres instead — see the README.)
 #
 # RUNTIME=node:22-bookworm-slim lets this build before the monolayer/* base images are
@@ -32,9 +32,8 @@ services:
   web:
     build:
       context: ./web
-      args: { RUNTIME: node:22-bookworm-slim }
+      # API_URL: compose has no gateway, so the web build proxies /api/* to the API itself.
+      args: { RUNTIME: node:22-bookworm-slim, API_URL: 'http://api:8080' }
     working_dir: /app
-    environment:
-      API_URL: http://api:8080
     ports: ['3000:3000']
     depends_on: [api]

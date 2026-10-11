@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import { AuthCard } from '@/components/app-shell'
-import { resetCsrf, safeNext } from '@/lib/api'
+import { resetCsrf } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
-
-const next = () => safeNext(new URLSearchParams(window.location.search).get('next'))
+import { go, nextParam } from '@/lib/paths'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -27,13 +26,13 @@ export default function LoginPage() {
     if (error) return setError(error.message ?? 'Sign-in failed')
     resetCsrf()
     // With 2FA on, Better Auth answers twoFactorRedirect and the client sends us to /two-factor.
-    if (!(data && 'twoFactorRedirect' in data && data.twoFactorRedirect)) router.replace(next())
+    if (!(data && 'twoFactorRedirect' in data && data.twoFactorRedirect)) go(router, nextParam())
   }
 
   async function signInSso(e: FormEvent) {
     e.preventDefault()
     setError('')
-    const { error } = await authClient.signIn.sso({ email: ssoEmail, callbackURL: next() })
+    const { error } = await authClient.signIn.sso({ email: ssoEmail, callbackURL: nextParam() })
     if (error) setError(error.message ?? 'No SSO connection for that email domain')
   }
 

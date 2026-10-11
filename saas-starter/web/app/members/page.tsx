@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppShell, useMe } from '@/components/app-shell'
 import { api, atLeast } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
+import { withBase } from '@/lib/paths'
 
 type Member = { id: string; role: string; user: { email: string; name: string } }
 
@@ -34,7 +35,7 @@ function Members() {
     setInviteLink('')
     const { data, error } = await authClient.organization.inviteMember({ email, role })
     if (error || !data) return setError(error?.message ?? 'Could not invite')
-    setInviteLink(`${window.location.origin}/accept-invite?id=${data.id}`)
+    setInviteLink(`${window.location.origin}${withBase('/accept-invite')}?id=${data.id}`)
     setEmail('')
   }
 

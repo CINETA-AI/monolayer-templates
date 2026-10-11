@@ -4,6 +4,9 @@ ARG RUNTIME=public.ecr.aws/monolayer/node:22
 FROM node:22-bookworm-slim AS build
 WORKDIR /src
 ENV NEXT_TELEMETRY_DISABLED=1
+# Only docker compose sets this: it bakes a /api proxy into the build (next.config.ts).
+# The published image is built without it — behind the gateway /api/* never reaches web.
+ARG API_URL=
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .

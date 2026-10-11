@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react'
 import { AuthCard } from '@/components/app-shell'
 import { resetCsrf } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
+import { go, nextParam } from '@/lib/paths'
 
 export default function TwoFactorPage() {
   const router = useRouter()
@@ -22,7 +23,7 @@ export default function TwoFactorPage() {
       : await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, ''), trustDevice })
     if (error) return setError(error.message ?? 'That code did not work')
     resetCsrf()
-    router.replace('/dashboard')
+    go(router, nextParam())
   }
 
   return (

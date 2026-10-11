@@ -58,8 +58,3 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 
 export const atLeast = (role: Role | null, min: Role) =>
   role !== null && { member: 1, admin: 2, owner: 3 }[role] >= { member: 1, admin: 2, owner: 3 }[min]
-
-/** Only same-site relative paths, so ?next= can't become an open redirect. */
-export function safeNext(next: string | null, fallback = '/dashboard'): string {
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : fallback
-}
