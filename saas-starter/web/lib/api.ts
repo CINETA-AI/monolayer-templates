@@ -1,7 +1,9 @@
 'use client'
 
-// Calls to the app's own API (same origin, cookies). Mutations carry the session-bound
-// CSRF token from GET /api/csrf.
+import { API } from '@/lib/paths'
+
+// Calls to the template's API (same origin, cookies). Mutations carry the session-bound
+// CSRF token from GET /account/api/csrf.
 
 export type Role = 'owner' | 'admin' | 'member'
 
@@ -32,7 +34,7 @@ export function resetCsrf() {
 }
 
 async function csrfToken(): Promise<string> {
-  if (!csrf) csrf = (await api<{ token: string }>('/api/csrf')).token
+  if (!csrf) csrf = (await api<{ token: string }>(`${API}/csrf`)).token
   return csrf
 }
 

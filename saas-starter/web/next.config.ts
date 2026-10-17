@@ -5,9 +5,10 @@ import type { NextConfig } from 'next'
 // one, this app is the gateway's catch-all too, and / sends visitors here.
 const basePath = process.env.BASE_PATH ?? '/account'
 
-// Local development and docker compose: the browser calls /api/* — outside the base path —
-// so forward it to the API. Behind the gateway /api/* goes straight to the API service and
-// never reaches this app, so the published image (built without API_URL) has no rewrite.
+// Local development and docker compose: the browser calls the API at /account/api/*, which
+// is inside this app's base path, so forward it to the API. Behind the gateway
+// /account/api/* goes straight to the API service and never reaches this app, so the
+// published image (built without API_URL) has no rewrite.
 const apiUpstream = (process.env.API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8080' : '')).replace(
   /\/$/,
   '',
@@ -24,8 +25,8 @@ const config: NextConfig = {
     return basePath ? [{ source: '/', destination: basePath, basePath: false, permanent: false }] : []
   },
   async rewrites() {
-    // basePath: false rewrites must point at an absolute URL (Next enforces it).
-    return apiUpstream ? [{ source: '/api/:path*', destination: `${apiUpstream}/api/:path*`, basePath: false }] : []
+    // source is relative to basePath (so it matches /account/api/*); the destination is absolute.
+    return apiUpstream ? [{ source: '/api/:path*', destination: `${apiUpstream}/account/api/:path*` }] : []
   },
   async headers() {
     return [

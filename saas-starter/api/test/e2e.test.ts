@@ -63,12 +63,12 @@ function clientFor(app: App) {
     send,
     jar,
     async signUpWithOrg(email: string, org: string) {
-      expect((await send('POST', '/api/auth/sign-up/email', { email, password: 'correct horse battery', name: email })).status).toBe(200)
-      const res = await send('POST', '/api/auth/organization/create', { name: org, slug: org.toLowerCase() })
+      expect((await send('POST', '/account/api/auth/sign-up/email', { email, password: 'correct horse battery', name: email })).status).toBe(200)
+      const res = await send('POST', '/account/api/auth/organization/create', { name: org, slug: org.toLowerCase() })
       expect(res.status).toBe(200)
       const created = (await res.json()) as { id: string }
-      await send('POST', '/api/auth/organization/set-active', { organizationId: created.id })
-      csrf = ((await (await send('GET', '/api/csrf')).json()) as { token: string }).token
+      await send('POST', '/account/api/auth/organization/set-active', { organizationId: created.id })
+      csrf = ((await (await send('GET', '/account/api/csrf')).json()) as { token: string }).token
       return created.id
     },
   }
@@ -92,7 +92,7 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
     const a = client()
     await a.signUpWithOrg(`owner-${tenancy}@a.example`, `Acme-${tenancy}`)
     expect([...a.jar.keys()].some((k) => k.startsWith('__Secure-saas.'))).toBe(true)
-    const me = (await (await a.send('GET', '/api/me')).json()) as { role: string; tenancy: string }
+    const me = (await (await a.send('GET', '/account/api/me')).json()) as { role: string; tenancy: string }
     expect(me.role).toBe('owner')
     expect(me.tenancy).toBe(tenancy)
   })
@@ -101,8 +101,8 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
     const email = `back-${tenancy}@a.example`
     const orgId = await client().signUpWithOrg(email, `Back-${tenancy}`)
     const again = client()
-    expect((await again.send('POST', '/api/auth/sign-in/email', { email, password: 'correct horse battery' })).status).toBe(200)
-    const me = (await (await again.send('GET', '/api/me')).json()) as { activeOrganizationId: string; role: string }
+    expect((await again.send('POST', '/account/api/auth/sign-in/email', { email, password: 'correct horse battery' })).status).toBe(200)
+    const me = (await (await again.send('GET', '/account/api/me')).json()) as { activeOrganizationId: string; role: string }
     expect(me.activeOrganizationId).toBe(orgId)
     expect(me.role).toBe('owner')
   })
@@ -113,21 +113,21 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
     await a.signUpWithOrg(`a-${tenancy}@a.example`, `OrgA-${tenancy}`)
     await b.signUpWithOrg(`b-${tenancy}@b.example`, `OrgB-${tenancy}`)
 
-    expect((await a.send('POST', '/api/notes', { title: 'a secret' })).status).toBe(201)
-    expect((await b.send('POST', '/api/notes', { title: 'b secret' })).status).toBe(201)
+    expect((await a.send('POST', '/account/api/notes', { title: 'a secret' })).status).toBe(201)
+    expect((await b.send('POST', '/account/api/notes', { title: 'b secret' })).status).toBe(201)
 
     const notes = async (c: ReturnType<typeof clientFor>) =>
-      ((await (await c.send('GET', '/api/notes')).json()) as { notes: { id: string; title: string }[] }).notes
+      ((await (await c.send('GET', '/account/api/notes')).json()) as { notes: { id: string; title: string }[] }).notes
     expect((await notes(a)).map((n) => n.title)).toEqual(['a secret'])
     expect((await notes(b)).map((n) => n.title)).toEqual(['b secret'])
 
     // B can't delete A's note even knowing its id.
     const aNote = (await notes(a))[0]!
-    expect((await b.send('DELETE', `/api/notes/${aNote.id}`)).status).toBe(404)
+    expect((await b.send('DELETE', `/account/api/notes/${aNote.id}`)).status).toBe(404)
     expect((await notes(a)).length).toBe(1)
 
     // Audit trail is per tenant too.
-    const audit = (await (await a.send('GET', '/api/audit')).json()) as { events: { action: string }[] }
+    const audit = (await (await a.send('GET', '/account/api/audit')).json()) as { events: { action: string }[] }
     expect(audit.events.map((e) => e.action)).toEqual(['note.create'])
   })
 
@@ -150,9 +150,9 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
       },
     }
     // Better Auth's own register endpoint only checks membership — it's closed.
-    expect((await a.send('POST', '/api/auth/sso/register', body)).status).toBe(404)
+    expect((await a.send('POST', '/account/api/auth/sso/register', body)).status).toBe(404)
 
-    const res = await a.send('POST', '/api/sso/providers', body)
+    const res = await a.send('POST', '/account/api/sso/providers', body)
     expect(res.status).toBe(201)
     const out = (await res.json()) as {
       provider: { organizationId: string; domainVerified?: boolean }
@@ -164,14 +164,14 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
     expect(out.dnsRecord.name).toBe(`_saas-sso-okta-${tenancy}.corp-${tenancy}.example`)
     expect(out.dnsRecord.value.length).toBeGreaterThanOrEqual(16)
 
-    expect((await a.send('DELETE', `/api/sso/providers/okta-${tenancy}`)).status).toBe(204)
-    expect((await a.send('DELETE', `/api/sso/providers/okta-${tenancy}`)).status).toBe(404)
+    expect((await a.send('DELETE', `/account/api/sso/providers/okta-${tenancy}`)).status).toBe(204)
+    expect((await a.send('DELETE', `/account/api/sso/providers/okta-${tenancy}`)).status).toBe(404)
   })
 
   it('rejects a mutation without the CSRF token', async () => {
     const a = client()
     await a.signUpWithOrg(`c-${tenancy}@a.example`, `OrgC-${tenancy}`)
-    const res = await app.request('/api/notes', {
+    const res = await app.request('/account/api/notes', {
       method: 'POST',
       headers: {
         origin: ORIGIN,
@@ -188,13 +188,13 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
     const orgId = await owner.signUpWithOrg(`o-${tenancy}@d.example`, `OrgD-${tenancy}`)
     const member = client()
     const memberEmail = `m-${tenancy}@d.example`
-    await member.send('POST', '/api/auth/sign-up/email', { email: memberEmail, password: 'correct horse battery', name: 'M' })
+    await member.send('POST', '/account/api/auth/sign-up/email', { email: memberEmail, password: 'correct horse battery', name: 'M' })
     const inv = (await (
-      await owner.send('POST', '/api/auth/organization/invite-member', { email: memberEmail, role: 'member', organizationId: orgId })
+      await owner.send('POST', '/account/api/auth/organization/invite-member', { email: memberEmail, role: 'member', organizationId: orgId })
     ).json()) as { id: string }
-    expect((await member.send('POST', '/api/auth/organization/accept-invitation', { invitationId: inv.id })).status).toBe(200)
-    await member.send('POST', '/api/auth/organization/set-active', { organizationId: orgId })
-    const csrf = ((await (await member.send('GET', '/api/csrf')).json()) as { token: string }).token
+    expect((await member.send('POST', '/account/api/auth/organization/accept-invitation', { invitationId: inv.id })).status).toBe(200)
+    await member.send('POST', '/account/api/auth/organization/set-active', { organizationId: orgId })
+    const csrf = ((await (await member.send('GET', '/account/api/csrf')).json()) as { token: string }).token
 
     const mreq = (method: string, url: string) =>
       app.request(url, {
@@ -205,9 +205,9 @@ describe.each(['rls', 'schema'] as const)('e2e tenancy=%s', (tenancy) => {
           cookie: [...member.jar].map(([k, v]) => `${k}=${v}`).join('; '),
         },
       })
-    expect((await mreq('GET', '/api/notes')).status).toBe(200)
-    expect((await mreq('GET', '/api/audit')).status).toBe(403)
-    expect((await mreq('DELETE', '/api/notes/00000000-0000-0000-0000-000000000001')).status).toBe(403)
+    expect((await mreq('GET', '/account/api/notes')).status).toBe(200)
+    expect((await mreq('GET', '/account/api/audit')).status).toBe(403)
+    expect((await mreq('DELETE', '/account/api/notes/00000000-0000-0000-0000-000000000001')).status).toBe(403)
   })
 })
 
@@ -224,14 +224,14 @@ describe('e2e preview environment', () => {
 
   it('gives a brand-new user a tenant full of synthetic data', async () => {
     const u = clientFor(stack.app)
-    await u.send('POST', '/api/auth/sign-up/email', { email: 'p@preview.example', password: 'correct horse battery', name: 'P' })
-    const me = (await (await u.send('GET', '/api/me')).json()) as { activeOrganizationId: string | null; role: string }
+    await u.send('POST', '/account/api/auth/sign-up/email', { email: 'p@preview.example', password: 'correct horse battery', name: 'P' })
+    const me = (await (await u.send('GET', '/account/api/me')).json()) as { activeOrganizationId: string | null; role: string }
     expect(me.activeOrganizationId).toBeTruthy()
     expect(me.role).toBe('owner')
-    const { notes } = (await (await u.send('GET', '/api/notes')).json()) as { notes: { title: string }[] }
+    const { notes } = (await (await u.send('GET', '/account/api/notes')).json()) as { notes: { title: string }[] }
     expect(notes.length).toBe(4)
     // Idempotent: a second /api/me doesn't make another demo org.
-    const again = (await (await u.send('GET', '/api/me')).json()) as { activeOrganizationId: string }
+    const again = (await (await u.send('GET', '/account/api/me')).json()) as { activeOrganizationId: string }
     expect(again.activeOrganizationId).toBe(me.activeOrganizationId)
   })
 })
@@ -250,11 +250,11 @@ describe('e2e MFA required (the default)', () => {
   it('keeps tenant data closed until TOTP is enrolled', async () => {
     const u = clientFor(stack.app)
     await u.signUpWithOrg('mfa@a.example', 'MfaOrg')
-    expect(((await (await u.send('GET', '/api/notes')).json()) as { error: string }).error).toBe('mfa_required')
-    const me = (await (await u.send('GET', '/api/me')).json()) as { mfaEnabled: boolean; mfaRequired: boolean }
+    expect(((await (await u.send('GET', '/account/api/notes')).json()) as { error: string }).error).toBe('mfa_required')
+    const me = (await (await u.send('GET', '/account/api/me')).json()) as { mfaEnabled: boolean; mfaRequired: boolean }
     expect(me).toMatchObject({ mfaEnabled: false, mfaRequired: true })
     // Enrollment itself is reachable: Better Auth hands back a TOTP URI.
-    const enable = await u.send('POST', '/api/auth/two-factor/enable', { password: 'correct horse battery' })
+    const enable = await u.send('POST', '/account/api/auth/two-factor/enable', { password: 'correct horse battery' })
     expect(enable.status).toBe(200)
     expect(((await enable.json()) as { totpURI: string }).totpURI).toMatch(/^otpauth:\/\/totp\//)
   })

@@ -3,7 +3,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 // CSRF protection for the app's own state-changing routes (Better Auth protects its own).
 // Two layers:
 //  1. Origin check — a mutating request must come from the app's public origin.
-//  2. Session-bound token — GET /api/csrf returns <nonce>.<hmac(secret, session|nonce)>;
+//  2. Session-bound token — GET /account/api/csrf returns <nonce>.<hmac(secret, session|nonce)>;
 //     mutating requests echo it in X-CSRF-Token. Another site can't read it (same-origin
 //     policy) or forge it (it needs CSRF_SECRET), and it's useless with another session.
 

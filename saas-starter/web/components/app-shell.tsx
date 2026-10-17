@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 import { ApiError, api, atLeast, resetCsrf, type Me } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
-import { here } from '@/lib/paths'
+import { API, here } from '@/lib/paths'
 
 const MeContext = createContext<{ me: Me; refresh: () => Promise<void> } | null>(null)
 
@@ -36,7 +36,7 @@ export function AppShell({
 
   const load = useCallback(async () => {
     try {
-      const m = await api<Me>('/api/me')
+      const m = await api<Me>(`${API}/me`)
       // Each step carries ?next= so the visitor ends up where they were going.
       if (requireMfa && m.mfaRequired && !m.mfaEnabled) return router.replace(`/settings/security?next=${here(pathname)}`)
       if (requireOrg && !m.activeOrganizationId) return router.replace(`/onboarding?next=${here(pathname)}`)

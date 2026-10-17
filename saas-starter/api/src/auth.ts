@@ -4,6 +4,7 @@ import { organization, twoFactor } from 'better-auth/plugins'
 import { sso } from '@better-auth/sso'
 
 import type { Config } from './config.js'
+import { API } from './paths.js'
 
 // Authentication: Better Auth, running inside this API, data in our own Postgres.
 //  - email + password (12+ chars), TOTP two-factor (required by the route guard in routes.ts)
@@ -21,7 +22,7 @@ export function authOptions(cfg: Config, pool: pg.Pool) {
     database: pool,
     secret: cfg.sessionSecret,
     baseURL: cfg.publicUrl || undefined,
-    basePath: '/api/auth',
+    basePath: `${API}/auth`,
     trustedOrigins: cfg.publicUrl ? [cfg.publicUrl] : [],
     emailAndPassword: { enabled: true, minPasswordLength: 12 },
     session: {

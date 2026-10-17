@@ -4,11 +4,11 @@ import { ssoClient } from '@better-auth/sso/client'
 import { organizationClient, twoFactorClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
 
-import { withBase } from '@/lib/paths'
+import { API, withBase } from '@/lib/paths'
 
-// Better Auth runs inside the API, reached same-origin at /api/auth through the gateway.
+// Better Auth runs inside the API, reached same-origin at /account/api/auth through the gateway.
 export const authClient = createAuthClient({
-  basePath: '/api/auth',
+  basePath: `${API}/auth`,
   plugins: [
     organizationClient(),
     twoFactorClient({

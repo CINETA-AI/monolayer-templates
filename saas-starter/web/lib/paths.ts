@@ -7,6 +7,10 @@
 
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
+// The template's API. Not derived from BASE_PATH: the gateway routes /account/api/* to the
+// API service whatever this app's base path is, and leaves /api/* to the customer's backend.
+export const API = '/account/api'
+
 export const withBase = (path: string) => BASE_PATH + path
 
 /** Where a signed-in visitor goes when there is no (valid) ?next=. */

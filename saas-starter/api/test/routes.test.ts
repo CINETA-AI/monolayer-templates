@@ -63,7 +63,7 @@ const concrete = (p: string) => p.replace(':id', '00000000-0000-0000-0000-000000
 describe('deny by default', () => {
   it('only the health check is public', () => {
     const open = routes.filter((r) => 'public' in r.access).map((r) => `${r.method} ${r.path}`)
-    expect(open).toEqual(['GET /api/health'])
+    expect(open).toEqual(['GET /account/api/health'])
   })
 
   it.each(routes.filter((r) => !('public' in r.access)))('$method $path needs a session', async (r) => {
@@ -72,8 +72,8 @@ describe('deny by default', () => {
   })
 
   it('undeclared API paths are 404, not open', async () => {
-    expect((await call({ role: 'owner' }, 'GET', '/api/admin/export')).status).toBe(404)
-    expect((await call({ role: 'owner' }, 'PUT', '/api/notes')).status).toBe(404)
+    expect((await call({ role: 'owner' }, 'GET', '/account/api/admin/export')).status).toBe(404)
+    expect((await call({ role: 'owner' }, 'PUT', '/account/api/notes')).status).toBe(404)
   })
 
   it('routes are only added through the guarded registry', () => {
@@ -90,38 +90,38 @@ describe('deny by default', () => {
 
 describe('MFA', () => {
   it('blocks tenant data until a second factor is enrolled', async () => {
-    const res = await call({ mfa: false, role: 'owner' }, 'GET', '/api/notes')
+    const res = await call({ mfa: false, role: 'owner' }, 'GET', '/account/api/notes')
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ error: 'mfa_required' })
   })
 
   it('still lets the user reach the enrollment-flow endpoints', async () => {
-    expect((await call({ mfa: false }, 'GET', '/api/me')).status).toBe(200)
-    expect((await call({ mfa: false }, 'GET', '/api/csrf')).status).toBe(200)
+    expect((await call({ mfa: false }, 'GET', '/account/api/me')).status).toBe(200)
+    expect((await call({ mfa: false }, 'GET', '/account/api/csrf')).status).toBe(200)
   })
 })
 
 describe('RBAC', () => {
   it('requires an active organization', async () => {
-    const res = await call({ org: null, role: 'owner' }, 'GET', '/api/notes')
+    const res = await call({ org: null, role: 'owner' }, 'GET', '/account/api/notes')
     expect(await res.json()).toEqual({ error: 'no_active_organization' })
   })
 
   it('requires membership in it', async () => {
-    expect((await call({}, 'GET', '/api/notes')).status).toBe(403)
+    expect((await call({}, 'GET', '/account/api/notes')).status).toBe(403)
   })
 
   it.each([
-    ['member', 'GET', '/api/notes', 200],
-    ['member', 'POST', '/api/notes', 201],
-    ['member', 'DELETE', '/api/notes/:id', 403],
-    ['admin', 'DELETE', '/api/notes/:id', 204],
-    ['member', 'GET', '/api/audit', 403],
-    ['admin', 'GET', '/api/audit', 200],
-    ['member', 'POST', '/api/sso/providers', 403],
-    ['owner', 'POST', '/api/sso/providers', 201],
-    ['member,admin', 'GET', '/api/audit', 200],
-    ['superuser', 'GET', '/api/notes', 403],
+    ['member', 'GET', '/account/api/notes', 200],
+    ['member', 'POST', '/account/api/notes', 201],
+    ['member', 'DELETE', '/account/api/notes/:id', 403],
+    ['admin', 'DELETE', '/account/api/notes/:id', 204],
+    ['member', 'GET', '/account/api/audit', 403],
+    ['admin', 'GET', '/account/api/audit', 200],
+    ['member', 'POST', '/account/api/sso/providers', 403],
+    ['owner', 'POST', '/account/api/sso/providers', 201],
+    ['member,admin', 'GET', '/account/api/audit', 200],
+    ['superuser', 'GET', '/account/api/notes', 403],
   ] as const)('%s %s %s -> %i', async (role, method, url, status) => {
     const res = await call({ role }, method, concrete(url), { csrf: true, origin: ORIGIN })
     expect(res.status).toBe(status)
@@ -129,7 +129,7 @@ describe('RBAC', () => {
 
   it('binds a new SSO provider to the caller organization, ignoring the body', async () => {
     const { app } = buildApp({ cfg, auth: fakeAuth({ role: 'admin' }), pool: fakePool() })
-    const res = await app.request('/api/sso/providers', {
+    const res = await app.request('/account/api/sso/providers', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -144,19 +144,19 @@ describe('RBAC', () => {
 
 describe('CSRF', () => {
   it('rejects a mutation without the token', async () => {
-    const res = await call({ role: 'owner' }, 'POST', '/api/notes', { origin: ORIGIN })
+    const res = await call({ role: 'owner' }, 'POST', '/account/api/notes', { origin: ORIGIN })
     expect(await res.json()).toEqual({ error: 'csrf' })
   })
 
   it('rejects a mutation from another origin', async () => {
-    const res = await call({ role: 'owner' }, 'POST', '/api/notes', { csrf: true, origin: 'https://evil.example' })
+    const res = await call({ role: 'owner' }, 'POST', '/account/api/notes', { csrf: true, origin: 'https://evil.example' })
     expect(await res.json()).toEqual({ error: 'bad_origin' })
   })
 
   it('runs tenant queries as the RLS role with the tenant pinned', async () => {
     const log: string[] = []
     const { app } = buildApp({ cfg, auth: fakeAuth({ role: 'member' }), pool: fakePool(log) })
-    await app.request('/api/notes')
+    await app.request('/account/api/notes')
     expect(log).toContain('SET LOCAL ROLE app_tenant')
     expect(log.some((q) => q.includes("set_config('app.tenant_id'"))).toBe(true)
   })
@@ -164,7 +164,7 @@ describe('CSRF', () => {
 
 describe('headers', () => {
   it('never lets API responses be cached', async () => {
-    const res = await call(undefined, 'GET', '/api/health')
+    const res = await call(undefined, 'GET', '/account/api/health')
     expect(res.headers.get('cache-control')).toBe('no-store')
   })
 })

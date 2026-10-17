@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { AppShell } from '@/components/app-shell'
 import { api } from '@/lib/api'
+import { API } from '@/lib/paths'
 
 type Event = { id: string; actor: string; action: string; target: string; created_at: string }
 
@@ -12,7 +13,7 @@ function Audit() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api<{ events: Event[] }>('/api/audit')
+    api<{ events: Event[] }>(`${API}/audit`)
       .then((r) => setEvents(r.events))
       .catch((e: Error) => setError(e.message === 'forbidden' ? 'Only admins can see the audit log.' : e.message))
   }, [])

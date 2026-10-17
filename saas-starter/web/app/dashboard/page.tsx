@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { AppShell, useMe } from '@/components/app-shell'
 import { api, atLeast } from '@/lib/api'
+import { API } from '@/lib/paths'
 
 type Note = { id: string; title: string; body: string; created_at: string }
 
@@ -16,7 +17,7 @@ function Notes() {
 
   const load = useCallback(async () => {
     try {
-      setNotes((await api<{ notes: Note[] }>('/api/notes')).notes)
+      setNotes((await api<{ notes: Note[] }>(`${API}/notes`)).notes)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -30,7 +31,7 @@ function Notes() {
     e.preventDefault()
     setError('')
     try {
-      await api('/api/notes', { method: 'POST', body: { title, body } })
+      await api(`${API}/notes`, { method: 'POST', body: { title, body } })
       setTitle('')
       setBody('')
       await load()
@@ -42,7 +43,7 @@ function Notes() {
   async function remove(id: string) {
     if (!confirm('Delete this note?')) return
     try {
-      await api(`/api/notes/${id}`, { method: 'DELETE' })
+      await api(`${API}/notes/${id}`, { method: 'DELETE' })
       await load()
     } catch (e) {
       setError((e as Error).message)

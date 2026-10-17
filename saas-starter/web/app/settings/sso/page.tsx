@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { AppShell } from '@/components/app-shell'
 import { api } from '@/lib/api'
+import { API } from '@/lib/paths'
 
 type Provider = {
   providerId: string
@@ -19,7 +20,7 @@ const DNS_PREFIX = 'saas-sso' // matches SSO_DNS_PREFIX in the API
 
 /** Better Auth's own SSO endpoints (admin-checked by Better Auth). */
 async function betterAuth<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api/auth/sso/${path}`, {
+  const res = await fetch(`${API}/auth/sso/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     headers: body === undefined ? {} : { 'content-type': 'application/json' },
     credentials: 'same-origin',
@@ -65,13 +66,13 @@ function Sso() {
             samlConfig: {
               entryPoint: form.entryPoint,
               cert: form.cert,
-              callbackUrl: `${origin}/api/auth/sso/saml2/sp/acs/${form.providerId}`,
+              callbackUrl: `${origin}${API}/auth/sso/saml2/sp/acs/${form.providerId}`,
               idpMetadata: { entityID: form.issuer },
               spMetadata: {},
             },
           }
     try {
-      const out = await api<{ dnsRecord: DnsRecord }>('/api/sso/providers', { method: 'POST', body })
+      const out = await api<{ dnsRecord: DnsRecord }>(`${API}/sso/providers`, { method: 'POST', body })
       setDns({ ...dns, [form.providerId]: out.dnsRecord })
       setForm({ providerId: '', domain: '', issuer: '', clientId: '', clientSecret: '', entryPoint: '', cert: '' })
       await load()
@@ -104,7 +105,7 @@ function Sso() {
   async function remove(p: Provider) {
     if (!confirm(`Remove the ${p.domain} SSO connection? Its users fall back to password sign-in.`)) return
     try {
-      await api(`/api/sso/providers/${encodeURIComponent(p.providerId)}`, { method: 'DELETE' })
+      await api(`${API}/sso/providers/${encodeURIComponent(p.providerId)}`, { method: 'DELETE' })
       await load()
     } catch (e) {
       setError((e as Error).message)
@@ -168,13 +169,13 @@ function Sso() {
           In your identity provider, use:
           {protocol === 'oidc' ? (
             <p>
-              Redirect URI <code>{`${origin}/api/auth/sso/callback/${id}`}</code>
+              Redirect URI <code>{`${origin}${API}/auth/sso/callback/${id}`}</code>
             </p>
           ) : (
             <p>
-              ACS URL <code>{`${origin}/api/auth/sso/saml2/sp/acs/${id}`}</code>
+              ACS URL <code>{`${origin}${API}/auth/sso/saml2/sp/acs/${id}`}</code>
               <br />
-              SP metadata <code>{`${origin}/api/auth/sso/saml2/sp/metadata?providerId=${id}`}</code>
+              SP metadata <code>{`${origin}${API}/auth/sso/saml2/sp/metadata?providerId=${id}`}</code>
             </p>
           )}
         </div>

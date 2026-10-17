@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppShell, useMe } from '@/components/app-shell'
 import { api, atLeast } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
-import { withBase } from '@/lib/paths'
+import { API, withBase } from '@/lib/paths'
 
 type Member = { id: string; role: string; user: { email: string; name: string } }
 
@@ -19,7 +19,7 @@ function Members() {
 
   const load = useCallback(async () => {
     try {
-      setMembers((await api<{ members: Member[] }>('/api/members')).members)
+      setMembers((await api<{ members: Member[] }>(`${API}/members`)).members)
     } catch (e) {
       setError((e as Error).message)
     }

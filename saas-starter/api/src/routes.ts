@@ -7,6 +7,7 @@ import { MUTATING, issueCsrfToken, originAllowed, verifyCsrfToken } from './csrf
 import { withTenant, type Queryable } from './db.js'
 import { allows, isRole, type Access, type Role } from './rbac.js'
 import { ensurePreviewTenant } from './seed.js'
+import { API } from './paths.js'
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -50,8 +51,8 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
   // Better Auth owns /api/auth/* (sign-up/in, sessions, organizations, 2FA, SSO) —
   // except SSO provider management: Better Auth only checks org membership there, so
   // those go through the admin-only routes below instead.
-  const ssoAdminEndpoints = new Set(['/api/auth/sso/register', '/api/auth/sso/update-provider', '/api/auth/sso/delete-provider'])
-  app.on(['GET', 'POST'], '/api/auth/*', async (c): Promise<Response> => {
+  const ssoAdminEndpoints = new Set([`${API}/auth/sso/register`, `${API}/auth/sso/update-provider`, `${API}/auth/sso/delete-provider`])
+  app.on(['GET', 'POST'], `${API}/auth/*`, async (c): Promise<Response> => {
     if (ssoAdminEndpoints.has(c.req.path)) return c.json({ error: 'not_found' }, 404)
     return auth.handler(c.req.raw)
   })
@@ -103,13 +104,13 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     app.on(method, path, guard(spec, handler))
   }
 
-  route('GET', '/api/health', { public: true }, (c) => c.json({ ok: true }))
+  route('GET', `${API}/health`, { public: true }, (c) => c.json({ ok: true }))
 
-  route('GET', '/api/csrf', { session: true, allowWithoutMfa: true }, (c, { session }) =>
+  route('GET', `${API}/csrf`, { session: true, allowWithoutMfa: true }, (c, { session }) =>
     c.json({ token: issueCsrfToken(cfg.csrfSecret, session!.session.id) }),
   )
 
-  route('GET', '/api/me', { session: true, allowWithoutMfa: true }, async (c, { session }) => {
+  route('GET', `${API}/me`, { session: true, allowWithoutMfa: true }, async (c, { session }) => {
     const s = session!
     let activeOrganizationId = s.session.activeOrganizationId ?? null
     // Preview environments give each new user a tenant full of synthetic data.
@@ -130,7 +131,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     })
   })
 
-  route('GET', '/api/notes', { permission: 'notes:read' }, async (c, { tenant }) => {
+  route('GET', `${API}/notes`, { permission: 'notes:read' }, async (c, { tenant }) => {
     const rows = await tenant!(async (db) => {
       const { rows } = await db.query(
         'SELECT id, title, body, created_by, created_at FROM notes ORDER BY created_at DESC LIMIT 100',
@@ -140,7 +141,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     return c.json({ notes: rows })
   })
 
-  route('POST', '/api/notes', { permission: 'notes:write' }, async (c, { tenant, session }) => {
+  route('POST', `${API}/notes`, { permission: 'notes:write' }, async (c, { tenant, session }) => {
     const body = (await c.req.json().catch(() => ({}))) as { title?: unknown; body?: unknown }
     const title = typeof body.title === 'string' ? body.title.trim() : ''
     const text = typeof body.body === 'string' ? body.body : ''
@@ -159,7 +160,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     return c.json({ note }, 201)
   })
 
-  route('DELETE', '/api/notes/:id', { permission: 'notes:delete' }, async (c, { tenant, session }) => {
+  route('DELETE', `${API}/notes/:id`, { permission: 'notes:delete' }, async (c, { tenant, session }) => {
     const id = c.req.param('id') ?? ''
     if (!/^[0-9a-f-]{36}$/i.test(id)) return c.json({ error: 'not_found' }, 404)
     const deleted = await tenant!(async (db) => {
@@ -175,14 +176,14 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     return deleted ? c.body(null, 204) : c.json({ error: 'not_found' }, 404)
   })
 
-  route('GET', '/api/members', { permission: 'members:read' }, async (c, { tenantId }) => {
+  route('GET', `${API}/members`, { permission: 'members:read' }, async (c, { tenantId }) => {
     const res = await auth.api.listMembers({ query: { organizationId: tenantId }, headers: c.req.raw.headers })
     return c.json(res)
   })
 
   // Enterprise SSO: an org admin registers their IdP (OIDC or SAML). It is always bound
   // to the caller's own organization, whatever the body says.
-  route('POST', '/api/sso/providers', { permission: 'sso:manage' }, async (c, { tenantId }) => {
+  route('POST', `${API}/sso/providers`, { permission: 'sso:manage' }, async (c, { tenantId }) => {
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
     const provider = await auth.api.registerSSOProvider({
       body: { ...(body as any), organizationId: tenantId },
@@ -191,7 +192,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     return c.json(
       {
         provider,
-        // Publish this, then call POST /api/auth/sso/verify-domain { providerId }.
+        // Publish this, then call POST /account/api/auth/sso/verify-domain { providerId }.
         dnsRecord: {
           type: 'TXT',
           name: `_${SSO_DNS_PREFIX}-${provider.providerId}.${provider.domain}`,
@@ -202,7 +203,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     )
   })
 
-  route('DELETE', '/api/sso/providers/:providerId', { permission: 'sso:manage' }, async (c, { tenantId }) => {
+  route('DELETE', `${API}/sso/providers/:providerId`, { permission: 'sso:manage' }, async (c, { tenantId }) => {
     const providerId = c.req.param('providerId') ?? ''
     const { providers } = await auth.api.listSSOProviders({ headers: c.req.raw.headers })
     if (!providers.some((p) => p.providerId === providerId && p.organizationId === tenantId)) {
@@ -212,7 +213,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
     return c.body(null, 204)
   })
 
-  route('GET', '/api/audit', { permission: 'audit:read' }, async (c, { tenant }) => {
+  route('GET', `${API}/audit`, { permission: 'audit:read' }, async (c, { tenant }) => {
     const rows = await tenant!(async (db) => {
       const { rows } = await db.query(
         'SELECT id, actor, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 200',
@@ -223,7 +224,7 @@ export function buildApp({ cfg, auth, pool }: Deps): { app: Hono; routes: RouteS
   })
 
   // Deny by default: anything under /api that wasn't declared above.
-  app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404))
+  app.all(`${API}/*`, (c) => c.json({ error: 'not_found' }, 404))
 
   return { app, routes }
 }
