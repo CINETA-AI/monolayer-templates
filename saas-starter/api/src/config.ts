@@ -3,6 +3,8 @@
 // the template's APP_ENV / TENANCY_MODE / SEED_MODE) arrives as env vars — nothing to
 // configure by hand.
 
+import { parseAppDatabases } from './app-databases.js'
+
 export type TenancyMode = 'rls' | 'schema'
 export type AppEnv = 'production' | 'staging' | 'preview' | 'local'
 
@@ -36,6 +38,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // TLS to Postgres: verified against the Amazon RDS CA bundle baked into the image.
     pgSslCaFile: env.PGSSLROOTCERT ?? '/etc/ssl/certs/rds-global-bundle.pem',
     pgSsl: env.PGSSLMODE ?? (local ? 'disable' : 'verify-full'),
+    // Databases for the customer's own apps (their backend), created by migrate().
+    appDatabases: parseAppDatabases(env.MONOLAYER_DB_APP_USERS),
   }
 }
 

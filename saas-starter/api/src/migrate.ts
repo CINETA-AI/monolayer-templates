@@ -3,6 +3,7 @@ import { getMigrations } from 'better-auth/db/migration'
 import type { BetterAuthOptions } from 'better-auth'
 
 import type { Config } from './config.js'
+import { provisionAppDatabases } from './app-databases.js'
 import { BOOTSTRAP_SQL, SHARED_SCHEMA, assertRowLevelSecurity, tenantTablesSQL } from './db.js'
 
 // Migrations run on boot. Every task of every environment starts at once, so they take
@@ -47,6 +48,9 @@ export async function migrate(pool: pg.Pool, cfg: Config, authOptions: BetterAut
       }
     }
     if (cfg.tenancy === 'rls') await assertRowLevelSecurity(client, SHARED_SCHEMA)
+    // The customer's apps get their own role + database (not inside a transaction:
+    // CREATE DATABASE can't run in one).
+    await provisionAppDatabases(client, cfg.appDatabases)
   } finally {
     await client.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]).catch(() => {})
     client.release()
